@@ -84,20 +84,12 @@ func _init_characters():
 	characters.append(c1)
 
 	var c2 := Character.new()
-	c2.char_name = "Gaucho"
-	c2.food_consumption = 2
-	c2.hunt_yield = 3
+	c2.char_name = "Vigia"
+	c2.food_consumption = 1
+	c2.hunt_yield = 2
 	c2.guard_reduction = 0.20
-	c2.color = Color(0.25, 0.55, 0.85)
+	c2.color = Color(0.25, 0.75, 0.35)
 	characters.append(c2)
-
-	var c3 := Character.new()
-	c3.char_name = "Vigia"
-	c3.food_consumption = 1
-	c3.hunt_yield = 2
-	c3.guard_reduction = 0.20
-	c3.color = Color(0.25, 0.75, 0.35)
-	characters.append(c3)
 
 	var c4 := Character.new()
 	c4.char_name = "Curandera"
