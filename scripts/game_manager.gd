@@ -2,10 +2,11 @@ extends Node
 
 ## Sobrevivir la Pampa - Game Manager
 ## Survival with role-exclusive actions + manual food distribution.
-##   CAZAR / CUIDAR   (anyone who qualifies)
+##   CAZAR             (anyone with hunt_yield > 0)
 ##   FAENAR            (Caudillo – double hunt, becomes weak)
 ##   CURAR             (Curandera – heals one weak character)
 ##   RASTREAR          (Vigía – scouts next night's threat)
+##   CUIDAR            (any alive – toggled on food screen, +2 hunger next turn)
 
 # --- Constants ---
 const NIGHTS_TO_SURVIVE := 10
@@ -13,6 +14,7 @@ const STARTING_FOOD := 10
 const BASE_EVENT_CHANCE := 0.40
 const FOOD_STOLEN_ON_ROBBERY := 3
 const EXTRA_FOOD_WHEN_WEAK := 2
+const EXTRA_FOOD_WHEN_GUARDED := 2
 
 # --- Enums ---
 enum Action { CAZAR, CUIDAR, FAENAR, CURAR, RASTREAR }
@@ -31,6 +33,7 @@ var log_messages: Array[String] = []
 var scouted_hint: String = ""
 var food_allocated: Array = []   # per-character food given by player
 var food_produced: Array = []    # per-character food produced by immediate hunt/faena
+var guarding: Array = []         # per-character guard toggle (set on food screen)
 var cure_target: int = -1        # index of character Curandera will heal
 var cure_log_msg: String = ""    # stored log from immediate cure
 var hunt_log_msgs: Array[String] = []  # stored logs from immediate hunts
@@ -45,6 +48,7 @@ class Character:
 	var assigned_action: int = 0  # Action.CAZAR
 	var color: Color
 	var will_weaken_next_turn: bool = false
+	var guarded_last_turn: bool = false
 
 	func is_alive() -> bool:
 		return state != 2  # MUERTO
@@ -55,9 +59,12 @@ class Character:
 	func get_food_need() -> int:
 		if not is_alive():
 			return 0
+		var need = food_consumption
 		if is_weak():
-			return food_consumption + EXTRA_FOOD_WHEN_WEAK
-		return food_consumption
+			need += EXTRA_FOOD_WHEN_WEAK
+		if guarded_last_turn:
+			need += EXTRA_FOOD_WHEN_GUARDED
+		return need
 
 	func can_hunt() -> bool:
 		return hunt_yield > 0 and is_alive()
@@ -112,8 +119,8 @@ func _init_characters():
 	var c4 := Character.new()
 	c4.char_name = "Curandera"
 	c4.food_consumption = 2
-	c4.hunt_yield = 0
-	c4.guard_reduction = 0.0
+	c4.hunt_yield = 1
+	c4.guard_reduction = 0.10
 	c4.color = Color(0.75, 0.45, 0.85)
 	characters.append(c4)
 
@@ -121,6 +128,8 @@ func _init_characters():
 	food_allocated.fill(0)
 	food_produced.resize(characters.size())
 	food_produced.fill(0)
+	guarding.resize(characters.size())
+	guarding.fill(false)
 
 
 # =========================================
@@ -191,6 +200,10 @@ func _step_food():
 				_log("%s pasa hambre." % c.char_name)
 			var result = c.weaken_or_kill()
 			_log(result)
+
+	# Clear guard hunger after food needs are evaluated
+	for c in characters:
+		c.guarded_last_turn = false
 	_log("")
 
 
@@ -222,7 +235,7 @@ func _step_hunting():
 
 
 func apply_immediate_action(char_idx: int, action: int) -> int:
-	## Called from UI when player assigns CAZAR/FAENAR/CUIDAR/RASTREAR.
+	## Called from UI when player assigns CAZAR/FAENAR/RASTREAR.
 	## Undoes previous action first, then applies new one.
 	## Returns food produced (0 for non-hunting actions).
 	var c: Character = characters[char_idx]
@@ -291,17 +304,20 @@ func _step_scouting():
 func _step_security():
 	var event_chance := BASE_EVENT_CHANCE
 
-	for c in characters:
+	for i in range(characters.size()):
+		var c = characters[i]
 		if not c.is_alive():
 			continue
-		if c.assigned_action == Action.CUIDAR:
-			if c.can_guard():
-				event_chance -= c.guard_reduction
-				_log("%s cuida el campamento (-%d%% riesgo)." % [c.char_name, int(c.guard_reduction * 100)])
-			elif c.is_weak():
-				_log("%s esta debil y no puede cuidar." % c.char_name)
+		if i < guarding.size() and guarding[i]:
+			var reduction = c.guard_reduction
+			if c.is_weak():
+				reduction *= 0.5
+			event_chance -= reduction
+			if c.is_weak():
+				_log("%s cuida debilitado (-%d%% riesgo)." % [c.char_name, int(reduction * 100)])
 			else:
-				_log("%s intenta cuidar pero no es efectivo/a." % c.char_name)
+				_log("%s cuida el campamento (-%d%% riesgo)." % [c.char_name, int(reduction * 100)])
+			c.guarded_last_turn = true
 
 	event_chance = maxf(0.0, event_chance)
 	_log("Riesgo nocturno: %d%%." % int(event_chance * 100))
@@ -377,6 +393,21 @@ func _check_end_conditions():
 		turn_resolved.emit()
 
 
+func get_guard_reduction_preview() -> float:
+	## Returns total event chance reduction from current guarding array.
+	var total := 0.0
+	for i in range(characters.size()):
+		var c = characters[i]
+		if not c.is_alive():
+			continue
+		if i < guarding.size() and guarding[i]:
+			var reduction = c.guard_reduction
+			if c.is_weak():
+				reduction *= 0.5
+			total += reduction
+	return total
+
+
 func _log(msg: String):
 	log_messages.append(msg)
 
@@ -393,4 +424,5 @@ func restart():
 	hunt_log_msgs.clear()
 	food_allocated.clear()
 	food_produced.clear()
+	guarding.clear()
 	_init_characters()

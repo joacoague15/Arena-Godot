@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c8n3yst4cnh5m"
-path="res://.godot/imported/frame_04.png-c11a637e889345a4f74a09749a480fc8.ctex"
+uid="uid://beu8y05tjir72"
+path="res://.godot/imported/background.png-0cfaafa94fbfb5267bc500b34e5eeb6d.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://sprites/caudillo/idle/frame_04.png"
-dest_files=["res://.godot/imported/frame_04.png-c11a637e889345a4f74a09749a480fc8.ctex"]
+source_file="res://sprites/background.png"
+dest_files=["res://.godot/imported/background.png-0cfaafa94fbfb5267bc500b34e5eeb6d.ctex"]
 
 [params]
 

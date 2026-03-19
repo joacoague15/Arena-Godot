@@ -72,20 +72,6 @@ func _ready():
 	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
 	center.add_child(vbox)
 
-	var title := Label.new()
-	title.text = "SOBREVIVIR\nLA PAMPA"
-	title.add_theme_font_size_override("font_size", 64)
-	title.add_theme_color_override("font_color", COL_ACCENT)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vbox.add_child(title)
-
-	var subtitle := Label.new()
-	subtitle.text = "Cuatro almas. Diez noches. Una pampa infinita."
-	subtitle.add_theme_font_size_override("font_size", 18)
-	subtitle.add_theme_color_override("font_color", COL_DIM)
-	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vbox.add_child(subtitle)
-
 	var spacer := Control.new()
 	spacer.custom_minimum_size.y = 40
 	vbox.add_child(spacer)
