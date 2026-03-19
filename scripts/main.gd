@@ -21,6 +21,11 @@ var night_screen: NightScreenUI
 var overlay: PanelContainer
 var overlay_label: Label
 
+# --- Energy HUD ---
+var energy_icons: Array = []  # Array of TextureRect
+var energy_tooltip: PanelContainer
+var energy_tooltip_label: Label
+
 # --- Cure Targeting Refs ---
 var cure_preview: PanelContainer
 var cure_hint_label: Label
@@ -194,6 +199,35 @@ func _build_hud():
 	food_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	hbox.add_child(food_label)
 
+	# Energy icons (top-right)
+	var energy_container := HBoxContainer.new()
+	energy_container.add_theme_constant_override("separation", 4)
+	hbox.add_child(energy_container)
+
+	var energy_tex := load("res://sprites/energy.png")
+	for i in range(3):
+		var icon := TextureRect.new()
+		icon.texture = energy_tex
+		icon.custom_minimum_size = Vector2(70, 70)
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.mouse_filter = Control.MOUSE_FILTER_STOP
+		icon.mouse_entered.connect(_on_energy_hover_enter)
+		icon.mouse_exited.connect(_on_energy_hover_exit)
+		energy_container.add_child(icon)
+		energy_icons.append(icon)
+
+	# Energy tooltip (hidden by default)
+	energy_tooltip = PanelContainer.new()
+	energy_tooltip.add_theme_stylebox_override("panel", UITheme.bubble_style(8, 6))
+	energy_tooltip.visible = false
+	energy_tooltip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	energy_tooltip.z_index = 100
+	energy_tooltip_label = UITheme.label("", 11, UITheme.COL_BONE)
+	energy_tooltip_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	energy_tooltip.add_child(energy_tooltip_label)
+	add_child(energy_tooltip)
+
 
 # =============================================
 # CHARACTERS
@@ -256,71 +290,14 @@ func _build_char(idx: int) -> Dictionary:
 	dead_lbl.visible = false
 	container.add_child(dead_lbl)
 
-	var name_lbl := UITheme.label(c.char_name.to_upper(), 11, UITheme.COL_INK_SOFT)
-	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_lbl.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	name_lbl.offset_top = -28
-	name_lbl.offset_bottom = -12
-	name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	container.add_child(name_lbl)
-
-	# Hover info bubble
-	var info_bubble := PanelContainer.new()
-	info_bubble.add_theme_stylebox_override("panel", UITheme.bubble_style(12, 12))
-	info_bubble.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	info_bubble.offset_top = -120
-	info_bubble.offset_bottom = -35
-	info_bubble.offset_left = -90
-	info_bubble.offset_right = 90
-	info_bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	info_bubble.modulate.a = 0.0
-	container.add_child(info_bubble)
-
-	var info_vbox := VBoxContainer.new()
-	info_vbox.add_theme_constant_override("separation", 3)
-	info_vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	info_bubble.add_child(info_vbox)
-
-	var food_txt := "%d" % c.food_consumption
-	var hunt_txt := "+%d" % c.hunt_yield if c.hunt_yield > 0 else "—"
-	var guard_txt := "-%d%%" % int(c.guard_reduction * 100) if c.guard_reduction > 0 else "—"
-
-	var food_lbl := UITheme.label("Come: %s" % food_txt, 11, UITheme.COL_BONE)
-	food_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	info_vbox.add_child(food_lbl)
-
-	var hunt_lbl := UITheme.label("Caza: %s" % hunt_txt, 11, UITheme.COL_BONE)
-	hunt_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	info_vbox.add_child(hunt_lbl)
-
-	var guard_lbl := UITheme.label("Guardia: %s" % guard_txt, 11, UITheme.COL_BONE)
-	guard_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	info_vbox.add_child(guard_lbl)
-
-	var sep := ColorRect.new()
-	sep.color = Color(1, 1, 1, 0.08)
-	sep.custom_minimum_size.y = 1
-	info_vbox.add_child(sep)
-
 	var state_lbl := UITheme.label("Normal", 11, UITheme.COL_MOSS)
-	state_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	info_vbox.add_child(state_lbl)
-
+	state_lbl.visible = false
 	var need_lbl := UITheme.label("Necesita: %d" % c.get_food_need(), 10, UITheme.COL_WARN)
-	need_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	info_vbox.add_child(need_lbl)
-
-	var action_indicator := UITheme.label("—", 10, UITheme.COL_BONE)
-	action_indicator.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	action_indicator.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	action_indicator.offset_top = -14
-	action_indicator.offset_bottom = 0
-	action_indicator.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	container.add_child(action_indicator)
+	need_lbl.visible = false
+	var food_lbl := UITheme.label("Come: %d" % c.food_consumption, 11, UITheme.COL_BONE)
+	food_lbl.visible = false
 
 	c.assigned_action = -1
-	action_indicator.text = "sin asignar"
-	action_indicator.add_theme_color_override("font_color", UITheme.COL_BONE.darkened(0.2))
 
 	# Actions bubble
 	var actions_panel := PanelContainer.new()
@@ -352,13 +329,9 @@ func _build_char(idx: int) -> Dictionary:
 		"sprite_frames": frames,
 		"sprite_overlay": sprite_overlay,
 		"dead_lbl": dead_lbl,
-		"name_lbl": name_lbl,
-		"info_bubble": info_bubble,
-		"info_alpha": 0.0,
 		"state_lbl": state_lbl,
 		"need_lbl": need_lbl,
 		"food_lbl": food_lbl,
-		"action_indicator": action_indicator,
 		"actions_panel": actions_panel,
 		"actions_vbox": actions_vbox,
 		"action_buttons": action_buttons,
@@ -372,6 +345,8 @@ func _build_action_buttons(parent: VBoxContainer, buttons_array: Array, c: GameM
 	if c.can_hunt():
 		var btn := Button.new()
 		btn.text = "CAZAR"
+		btn.custom_minimum_size = Vector2(140, 38)
+		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		UITheme.ghost_btn(btn, UITheme.COL_MOSS)
 		btn.pressed.connect(_on_action_btn_pressed.bind(idx, GameManager.Action.CAZAR))
 		parent.add_child(btn)
@@ -380,6 +355,8 @@ func _build_action_buttons(parent: VBoxContainer, buttons_array: Array, c: GameM
 	if c.can_faenar():
 		var btn := Button.new()
 		btn.text = "FAENAR"
+		btn.custom_minimum_size = Vector2(140, 38)
+		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		UITheme.ghost_btn(btn, UITheme.COL_BLOOD)
 		btn.pressed.connect(_on_action_btn_pressed.bind(idx, GameManager.Action.FAENAR))
 		parent.add_child(btn)
@@ -388,6 +365,8 @@ func _build_action_buttons(parent: VBoxContainer, buttons_array: Array, c: GameM
 	if c.can_curar():
 		var btn := Button.new()
 		btn.text = "CURAR"
+		btn.custom_minimum_size = Vector2(140, 38)
+		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		UITheme.ghost_btn(btn, UITheme.COL_DUSK.lightened(0.3))
 		btn.pressed.connect(_on_action_btn_pressed.bind(idx, GameManager.Action.CURAR))
 		parent.add_child(btn)
@@ -396,6 +375,8 @@ func _build_action_buttons(parent: VBoxContainer, buttons_array: Array, c: GameM
 	if c.can_rastrear():
 		var btn := Button.new()
 		btn.text = "RASTREAR"
+		btn.custom_minimum_size = Vector2(140, 38)
+		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		UITheme.ghost_btn(btn, UITheme.COL_WARN)
 		btn.pressed.connect(_on_action_btn_pressed.bind(idx, GameManager.Action.RASTREAR))
 		parent.add_child(btn)
@@ -418,15 +399,56 @@ func _build_bottom_bar():
 
 	resolve_btn = Button.new()
 	resolve_btn.text = "TERMINAR TURNO"
+	resolve_btn.custom_minimum_size = Vector2(220, 48)
 	UITheme.solid_btn(resolve_btn, UITheme.COL_INK, UITheme.COL_BG)
 	resolve_btn.pressed.connect(_on_resolve)
 	hbox.add_child(resolve_btn)
 
 	var restart_btn := Button.new()
 	restart_btn.text = "Reiniciar"
+	restart_btn.custom_minimum_size = Vector2(120, 40)
 	UITheme.ghost_btn(restart_btn, UITheme.COL_INK_SOFT, 12)
 	restart_btn.pressed.connect(_on_restart)
 	hbox.add_child(restart_btn)
+
+
+# =============================================
+# ENERGY ICONS
+# =============================================
+
+func _get_pending_actions() -> int:
+	var pending := 0
+	for i in range(GameManager.characters.size()):
+		if GameManager.characters[i].is_alive() and not actions_confirmed[i]:
+			pending += 1
+	return pending
+
+
+func _update_energy_icons():
+	var pending := _get_pending_actions()
+	for i in range(energy_icons.size()):
+		var icon: TextureRect = energy_icons[i]
+		if i < pending:
+			# Full energy — remaining action
+			icon.modulate.a = 1.0
+		elif i < 3:
+			# Spent energy — very faded
+			icon.modulate.a = 0.15
+		else:
+			icon.modulate.a = 0.15
+
+
+func _on_energy_hover_enter():
+	var pending := _get_pending_actions()
+	energy_tooltip_label.text = "%d acciones restantes" % pending
+	energy_tooltip.visible = true
+	# Position near top-right
+	var vp := get_viewport().get_mouse_position()
+	energy_tooltip.position = vp + Vector2(-120, 30)
+
+
+func _on_energy_hover_exit():
+	energy_tooltip.visible = false
 
 
 func _action_display_name(action_id: int, _c: GameManager.Character) -> String:
@@ -448,6 +470,7 @@ func _all_actions_confirmed() -> bool:
 
 
 func _update_resolve_btn():
+	_update_energy_icons()
 	if GameManager.game_over or GameManager.game_won:
 		resolve_btn.disabled = true
 		return
@@ -456,10 +479,7 @@ func _update_resolve_btn():
 		resolve_btn.text = "TERMINAR TURNO"
 	else:
 		resolve_btn.disabled = true
-		var pending := 0
-		for i in range(GameManager.characters.size()):
-			if GameManager.characters[i].is_alive() and not actions_confirmed[i]:
-				pending += 1
+		var pending := _get_pending_actions()
 		resolve_btn.text = "ASIGNA ACCIONES  (%d)" % pending
 
 
@@ -479,7 +499,7 @@ func _on_char_hover_exit(idx: int):
 		char_panels[idx]["container"].mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 
 
-func _process_hover(delta: float):
+func _process_hover(_delta: float):
 	for i in range(char_panels.size()):
 		var p: Dictionary = char_panels[i]
 		var alive = GameManager.characters[i].is_alive()
@@ -488,11 +508,6 @@ func _process_hover(delta: float):
 			target = 1.0
 
 		p["hover_amount"] = lerpf(p["hover_amount"], target, 0.12)
-		p["info_alpha"] = lerpf(p["info_alpha"], target, 0.1)
-
-		var info_bubble: PanelContainer = p["info_bubble"]
-		info_bubble.modulate.a = p["info_alpha"]
-		info_bubble.offset_bottom = -35 - p["info_alpha"] * 5
 
 		var sprite: TextureRect = p["sprite_rect"]
 		var s := lerpf(1.0, 1.015, p["hover_amount"])
@@ -516,6 +531,9 @@ func _on_char_gui_input(event: InputEvent, idx: int):
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		var c: GameManager.Character = GameManager.characters[idx]
 		if not c.is_alive() or GameManager.game_over or GameManager.game_won:
+			return
+		# Action already consumed — can't reopen
+		if actions_confirmed[idx]:
 			return
 
 		if selected_char == idx:
@@ -573,15 +591,6 @@ func _on_action_btn_pressed(char_idx: int, action_id: int):
 	var produced = GameManager.apply_immediate_action(char_idx, action_id)
 	actions_confirmed[char_idx] = true
 
-	var p: Dictionary = char_panels[char_idx]
-	var indicator: Label = p["action_indicator"]
-	if produced > 0:
-		indicator.text = "%s (+%d)" % [_action_display_name(action_id, c), produced]
-		indicator.add_theme_color_override("font_color", UITheme.COL_GOLD)
-	else:
-		indicator.text = _action_display_name(action_id, c)
-		indicator.add_theme_color_override("font_color", UITheme.COL_INK_SOFT)
-
 	_update_ui()
 
 	var tw := create_tween()
@@ -606,12 +615,6 @@ func _start_cure_targeting(healer_idx: int):
 func _confirm_cure_target(target_idx: int):
 	GameManager.apply_immediate_cure(cure_source_idx, target_idx)
 	actions_confirmed[cure_source_idx] = true
-
-	var target_name: String = GameManager.characters[target_idx].char_name
-	var p: Dictionary = char_panels[cure_source_idx]
-	var indicator: Label = p["action_indicator"]
-	indicator.text = "curar → %s" % target_name.to_lower()
-	indicator.add_theme_color_override("font_color", UITheme.COL_DUSK.lightened(0.3))
 
 	cure_targeting = false
 	cure_source_idx = -1
@@ -653,7 +656,7 @@ func _build_overlay():
 	overlay.add_child(center)
 
 	var inner := PanelContainer.new()
-	inner.add_theme_stylebox_override("panel", UITheme.bubble_style(16, 40))
+	inner.add_theme_stylebox_override("panel", UITheme.panel_style(40))
 	inner.custom_minimum_size = Vector2(420, 160)
 	center.add_child(inner)
 
@@ -669,6 +672,7 @@ func _build_overlay():
 
 	var btn := Button.new()
 	btn.text = "JUGAR DE NUEVO"
+	btn.custom_minimum_size = Vector2(220, 48)
 	UITheme.solid_btn(btn, UITheme.COL_INK_SOFT, UITheme.COL_BG)
 	btn.pressed.connect(_on_restart)
 	vbox.add_child(btn)
@@ -750,8 +754,6 @@ func _on_night_screen_hidden():
 			var p: Dictionary = char_panels[i]
 			if c.is_alive():
 				c.assigned_action = -1
-				p["action_indicator"].text = "sin asignar"
-				p["action_indicator"].add_theme_color_override("font_color", UITheme.COL_BONE.darkened(0.2))
 				var actions_vbox: VBoxContainer = p["actions_vbox"]
 				for child in actions_vbox.get_children():
 					child.queue_free()
@@ -780,8 +782,6 @@ func _on_restart():
 		var p: Dictionary = char_panels[i]
 
 		c.assigned_action = -1
-		p["action_indicator"].text = "sin asignar"
-		p["action_indicator"].add_theme_color_override("font_color", UITheme.COL_BONE.darkened(0.2))
 
 		var actions_vbox: VBoxContainer = p["actions_vbox"]
 		for child in actions_vbox.get_children():
@@ -796,7 +796,6 @@ func _on_restart():
 		p["is_selected"] = false
 		p["is_hovered"] = false
 		p["hover_amount"] = 0.0
-		p["info_alpha"] = 0.0
 		p["container"].mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 
 	_update_ui()
@@ -834,9 +833,6 @@ func _update_ui():
 			p["container"].mouse_default_cursor_shape = Control.CURSOR_ARROW
 			if selected_char == i:
 				_close_actions(i)
-			p["action_indicator"].text = "—"
-			p["action_indicator"].add_theme_color_override("font_color", UITheme.COL_BONE.darkened(0.3))
-			p["name_lbl"].add_theme_color_override("font_color", UITheme.COL_BONE.darkened(0.3))
 		elif c.is_weak():
 			state_lbl.text = "Debil"
 			state_lbl.add_theme_color_override("font_color", UITheme.COL_BLOOD)
@@ -853,13 +849,10 @@ func _update_ui():
 				GameManager._undo_immediate_action(i)
 				c.assigned_action = -1
 				actions_confirmed[i] = false
-				p["action_indicator"].text = "sin asignar"
-				p["action_indicator"].add_theme_color_override("font_color", UITheme.COL_BONE.darkened(0.2))
 		else:
 			state_lbl.text = "Normal"
 			state_lbl.add_theme_color_override("font_color", UITheme.COL_MOSS)
 			sprite_overlay.color = Color(0, 0, 0, 0)
-			p["name_lbl"].add_theme_color_override("font_color", UITheme.COL_INK_SOFT)
 
 		var need_lbl: Label = p["need_lbl"]
 		var guard_note = " (+2 guardia)" if c.guarded_last_turn else ""

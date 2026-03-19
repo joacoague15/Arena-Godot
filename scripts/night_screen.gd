@@ -23,7 +23,7 @@ func build():
 	add_child(center)
 
 	panel = PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", UITheme.bubble_style(16, 36))
+	panel.add_theme_stylebox_override("panel", UITheme.panel_style(36))
 	panel.custom_minimum_size = Vector2(500, 280)
 	center.add_child(panel)
 
@@ -50,6 +50,7 @@ func build():
 
 	continue_btn = Button.new()
 	continue_btn.text = "COMENZAR SIGUIENTE DIA"
+	continue_btn.custom_minimum_size = Vector2(280, 48)
 	UITheme.solid_btn(continue_btn, UITheme.COL_GOLD.darkened(0.2), Color(0.95, 0.92, 0.85))
 	continue_btn.pressed.connect(_on_continue)
 	continue_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER

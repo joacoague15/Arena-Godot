@@ -32,7 +32,7 @@ func build():
 	add_child(center)
 
 	panel = PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", UITheme.bubble_style(18, 32))
+	panel.add_theme_stylebox_override("panel", UITheme.panel_style(32))
 	panel.custom_minimum_size = Vector2(720, 440)
 	center.add_child(panel)
 
@@ -104,7 +104,8 @@ func build():
 		# Guard toggle button
 		var guard_btn := Button.new()
 		guard_btn.text = "CUIDAR"
-		guard_btn.custom_minimum_size.y = 28
+		guard_btn.custom_minimum_size = Vector2(140, 34)
+		guard_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		UITheme.ghost_btn(guard_btn, UITheme.COL_BONE, 11)
 		guard_btn.pressed.connect(_on_guard_toggle.bind(i))
 		col.add_child(guard_btn)
@@ -158,6 +159,7 @@ func build():
 	# Confirm button
 	confirm_btn = Button.new()
 	confirm_btn.text = "CONFIRMAR"
+	confirm_btn.custom_minimum_size = Vector2(220, 48)
 	UITheme.solid_btn(confirm_btn, UITheme.COL_GOLD.darkened(0.2), Color(0.95, 0.92, 0.85))
 	confirm_btn.pressed.connect(_on_confirm)
 	confirm_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER

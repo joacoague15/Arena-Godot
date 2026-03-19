@@ -13,7 +13,7 @@ const VIDEO_PATHS := [
 	"res://video/menu_bg.ogv",
 	"res://video/menu_bg_2.ogv",
 ]
-const MUSIC_PATH := "res://music/menu_theme.ogg"
+const MUSIC_PATH := "res://music/menu_bg.wav"
 const CROSSFADE_DURATION := 1.5   # seconds between videos
 const FADE_OUT_DURATION := 1.5    # seconds when pressing COMENZAR
 
@@ -78,26 +78,9 @@ func _ready():
 
 	var btn := Button.new()
 	btn.text = "  COMENZAR  "
+	btn.custom_minimum_size = Vector2(300, 120)
+	UITheme.solid_btn(btn, COL_ACCENT, COL_BG)
 	btn.add_theme_font_size_override("font_size", 24)
-	btn.add_theme_color_override("font_color", COL_BG)
-
-	var style_normal := StyleBoxFlat.new()
-	style_normal.bg_color = COL_ACCENT
-	style_normal.set_corner_radius_all(10)
-	style_normal.content_margin_left = 48
-	style_normal.content_margin_right = 48
-	style_normal.content_margin_top = 16
-	style_normal.content_margin_bottom = 16
-	btn.add_theme_stylebox_override("normal", style_normal)
-
-	var style_hover := style_normal.duplicate()
-	style_hover.bg_color = COL_ACCENT.lightened(0.2)
-	btn.add_theme_stylebox_override("hover", style_hover)
-
-	var style_pressed := style_normal.duplicate()
-	style_pressed.bg_color = COL_ACCENT.darkened(0.2)
-	btn.add_theme_stylebox_override("pressed", style_pressed)
-
 	btn.pressed.connect(_on_comenzar)
 	vbox.add_child(btn)
 

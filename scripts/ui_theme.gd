@@ -37,6 +37,30 @@ const FOOD_TOKEN_SIZE := 24
 const FOOD_TOKEN_GAP := 5
 const FOOD_GRID_COLS := 10
 
+# --- Texture styles (editable .tres files in res://resources/) ---
+static var _panel_res: StyleBoxTexture = null
+static var _btn_normal: StyleBoxTexture = null
+static var _btn_hover: StyleBoxTexture = null
+static var _btn_pressed: StyleBoxTexture = null
+static var _btn_disabled: StyleBoxTexture = null
+static var _ghost_normal: StyleBoxTexture = null
+static var _ghost_hover: StyleBoxTexture = null
+static var _ghost_pressed: StyleBoxTexture = null
+
+
+static func _ensure_resources():
+	if _panel_res == null:
+		_panel_res = load("res://resources/panel_style.tres")
+	if _btn_normal == null:
+		_btn_normal = load("res://resources/button_normal.tres")
+		_btn_hover = load("res://resources/button_hover.tres")
+		_btn_pressed = load("res://resources/button_pressed.tres")
+		_btn_disabled = load("res://resources/button_disabled.tres")
+	if _ghost_normal == null:
+		_ghost_normal = load("res://resources/ghost_normal.tres")
+		_ghost_hover = load("res://resources/ghost_hover.tres")
+		_ghost_pressed = load("res://resources/ghost_pressed.tres")
+
 
 static func label(text: String, size: int = 15, color: Color = COL_INK) -> Label:
 	var l := Label.new()
@@ -46,6 +70,7 @@ static func label(text: String, size: int = 15, color: Color = COL_INK) -> Label
 	return l
 
 
+## Dark flat bubble (used for small UI: info bubbles, action panels)
 static func bubble_style(radius: int = 14, pad: int = 14) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
 	s.bg_color = COL_BUBBLE
@@ -59,45 +84,35 @@ static func bubble_style(radius: int = 14, pad: int = 14) -> StyleBoxFlat:
 	return s
 
 
+## Texture panel (loads from res://resources/panel_style.tres — edit in Godot editor)
+static func panel_style(pad: int = 32) -> StyleBoxTexture:
+	_ensure_resources()
+	var s: StyleBoxTexture = _panel_res.duplicate()
+	s.content_margin_left = pad
+	s.content_margin_right = pad
+	s.content_margin_top = pad
+	s.content_margin_bottom = pad
+	return s
+
+
 static func ghost_btn(btn: Button, fg: Color, size: int = 14):
+	_ensure_resources()
 	btn.add_theme_font_size_override("font_size", size)
 	btn.add_theme_color_override("font_color", fg)
-	var empty := StyleBoxFlat.new()
-	empty.bg_color = Color(0, 0, 0, 0)
-	empty.content_margin_left = 16
-	empty.content_margin_right = 16
-	empty.content_margin_top = 10
-	empty.content_margin_bottom = 10
-	empty.set_corner_radius_all(8)
-	btn.add_theme_stylebox_override("normal", empty)
-	var h := empty.duplicate()
-	h.bg_color = Color(1, 1, 1, 0.08)
-	btn.add_theme_stylebox_override("hover", h)
-	var p := empty.duplicate()
-	p.bg_color = Color(1, 1, 1, 0.04)
-	btn.add_theme_stylebox_override("pressed", p)
+	btn.add_theme_stylebox_override("normal", _ghost_normal.duplicate())
+	btn.add_theme_stylebox_override("hover", _ghost_hover.duplicate())
+	btn.add_theme_stylebox_override("pressed", _ghost_pressed.duplicate())
 
 
-static func solid_btn(btn: Button, bg: Color, fg: Color):
+## Texture button (loads from res://resources/button_*.tres — edit in Godot editor)
+static func solid_btn(btn: Button, _bg: Color, fg: Color):
+	_ensure_resources()
 	btn.add_theme_font_size_override("font_size", 15)
 	btn.add_theme_color_override("font_color", fg)
-	var s := StyleBoxFlat.new()
-	s.bg_color = bg
-	s.set_corner_radius_all(10)
-	s.content_margin_left = 28
-	s.content_margin_right = 28
-	s.content_margin_top = 12
-	s.content_margin_bottom = 12
-	btn.add_theme_stylebox_override("normal", s)
-	var h := s.duplicate()
-	h.bg_color = bg.lightened(0.1)
-	btn.add_theme_stylebox_override("hover", h)
-	var p := s.duplicate()
-	p.bg_color = bg.darkened(0.1)
-	btn.add_theme_stylebox_override("pressed", p)
-	var d := s.duplicate()
-	d.bg_color = bg.darkened(0.3)
-	btn.add_theme_stylebox_override("disabled", d)
+	btn.add_theme_stylebox_override("normal", _btn_normal.duplicate())
+	btn.add_theme_stylebox_override("hover", _btn_hover.duplicate())
+	btn.add_theme_stylebox_override("pressed", _btn_pressed.duplicate())
+	btn.add_theme_stylebox_override("disabled", _btn_disabled.duplicate())
 	btn.add_theme_color_override("font_disabled_color", fg.darkened(0.4))
 
 
